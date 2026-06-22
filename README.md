@@ -229,7 +229,7 @@ GitHub: https://github.com/utkarshtripathy1030
 
 # License
 
-MIT License — see `LICENSE` for details.
+
 
 ---
 
