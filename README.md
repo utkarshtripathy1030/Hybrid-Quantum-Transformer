@@ -79,6 +79,8 @@ pip install pennylane
 pip install numpy matplotlib
 ```
 
+
+
 **Verify PennyLane is working:**
 
 ```python
@@ -86,6 +88,26 @@ import pennylane as qml
 dev = qml.device("default.qubit", wires=4)
 print(dev)
 ```
+
+## Benchmark Results
+
+The benchmark pipeline automatically generates comparison plots.
+
+![Results](results/results_comparison.png)
+
+---
+
+## Attention Heatmaps
+
+![Heatmaps](results/attention_heatmaps.png)
+
+---
+
+## Example Google Colab Execution
+
+The following screenshot shows the benchmark pipeline executing in Google Colab and generating the plots and heatmaps.
+
+![Colab Execution](results/colab_benchmark_execution.png)
 
 Expected output:
 ```
