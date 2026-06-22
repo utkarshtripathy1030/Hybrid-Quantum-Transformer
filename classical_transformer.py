@@ -13,7 +13,8 @@ class ClassicalAttention(nn.Module):
             T = x.shape[1]
             mask = nn.Transformer.generate_square_subsequent_mask(T, device=x.device)
         # nn.MultiheadAttention returns (attn_output, attn_output_weights)
-        out, _ = self.mha(x, x, x, attn_mask=mask, need_weights=False)
+        out, weights = self.mha(x, x, x, attn_mask=mask, need_weights=True)
+        self.attention_weights = weights.detach().cpu()
         return out
 
 class ClassicalTransformer(nn.Module):

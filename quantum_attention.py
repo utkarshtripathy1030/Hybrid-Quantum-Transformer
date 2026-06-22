@@ -25,11 +25,12 @@ def quantum_layer(inputs, weights):
     return [qml.expval(qml.PauliZ(i)) for i in range(n_qubits)]
 
 class QuantumAttention(nn.Module):
-    def __init__(self, embed_dim=32, n_qubits=4, n_layers=2, mode='vectorized'):
+    def __init__(self, embed_dim=32, n_qubits=4, n_layers=2, mode='vectorized', add_noise=False):
         super().__init__()
         self.embed_dim = embed_dim
         self.n_qubits = n_qubits
         self.mode = mode
+        self.add_noise = add_noise
         
         # Dimensions of Q and K project to n_qubits // 2 so their concat matches n_qubits
         self.q_proj = nn.Linear(embed_dim, n_qubits // 2, bias=False)
@@ -62,6 +63,8 @@ class QuantumAttention(nn.Module):
             
             # Run quantum layer in a single batch
             qlayer_out = self.qlayer(combined_flat)  # (B * T * T, n_qubits)
+            if self.add_noise:
+                qlayer_out = qlayer_out + torch.randn_like(qlayer_out) * 0.01
             
             # Take the mean of the expectation values
             scores = qlayer_out.mean(dim=-1)  # (B * T * T,)
@@ -78,7 +81,10 @@ class QuantumAttention(nn.Module):
                     for j in range(T):
                         # Combine Q[b, i] and K[b, j]
                         inp = torch.cat([Q[b, i], K[b, j]], dim=-1)  # (n_qubits,)
-                        score = self.qlayer(inp).mean()  # scalar
+                        q_out = self.qlayer(inp)
+                        if self.add_noise:
+                            q_out = q_out + torch.randn_like(q_out) * 0.01
+                        score = q_out.mean()  # scalar
                         col_list.append(score)
                     row_list.append(torch.stack(col_list))
                 scores_list.append(torch.stack(row_list))
@@ -100,5 +106,6 @@ class QuantumAttention(nn.Module):
                 scores = scores.masked_fill(mask == 0, float('-inf'))
                 
         weights = torch.softmax(scores, dim=-1)  # (B, T, T)
+        self.attention_weights = weights.detach().cpu()
         out = torch.matmul(weights, V)  # (B, T, C)
         return self.out_proj(out)

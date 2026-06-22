@@ -20,17 +20,22 @@ class ShakespeareDataset(Dataset):
     def __init__(self, data, seq_len):
         self.data = data
         self.seq_len = seq_len
+        # Using non-overlapping segments for distinct data batches
+        self.num_samples = (len(data) - 1) // seq_len
 
     def __len__(self):
-        return len(self.data) - self.seq_len
+        return self.num_samples
 
     def __getitem__(self, idx):
-        chunk = self.data[idx : idx + self.seq_len + 1]
-        x = torch.tensor(chunk[:-1], dtype=torch.long)
-        y = torch.tensor(chunk[1:], dtype=torch.long)
+        start_idx = idx * self.seq_len
+        x_indices = self.data[start_idx : start_idx + self.seq_len]
+        y_indices = self.data[start_idx + 1 : start_idx + self.seq_len + 1]
+        
+        x = torch.tensor(x_indices, dtype=torch.long)
+        y = torch.tensor(y_indices, dtype=torch.long)
         return x, y
 
-def get_data(seq_len=64, batch_size=16, val_split=0.1):
+def get_data(seq_len=64, batch_size=16, val_split=0.1, max_chars=12000):
     url = "https://raw.githubusercontent.com/karpathy/char-rnn/master/data/tinyshakespeare/input.txt"
     data_dir = "data"
     os.makedirs(data_dir, exist_ok=True)
@@ -44,6 +49,9 @@ def get_data(seq_len=64, batch_size=16, val_split=0.1):
     with open(file_path, 'r', encoding='utf-8') as f:
         text = f.read()
         
+    if max_chars is not None:
+        text = text[:max_chars]
+        
     tokenizer = CharTokenizer(text)
     encoded_data = tokenizer.encode(text)
     
@@ -54,7 +62,8 @@ def get_data(seq_len=64, batch_size=16, val_split=0.1):
     train_dataset = ShakespeareDataset(train_data, seq_len)
     val_dataset = ShakespeareDataset(val_data, seq_len)
     
+    # We want at least one batch for validation, if not, adjust batch_size or data size
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=True)
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, drop_last=True)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, drop_last=False)
     
     return train_loader, val_loader, tokenizer
